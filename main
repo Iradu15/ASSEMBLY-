@@ -1,0 +1,228 @@
+.data
+	//Vom citi sirul aici
+	sir:.space 1000
+
+	//Vom copia instructiunile aici
+	instructiune:.space 4 
+
+	//Format citire sir
+	format_scanf:.asciz "%s"
+	
+	//Format afisare numar 
+	format_printf_numar: .asciz "%d "
+	
+	//Format afisare caracter
+	format_printf_caracter:.asciz "%c "
+
+	//Format afisare string 
+	format_printf_string :.asciz "%s "
+	
+	//Format flush
+	format_prinf_flush :.asciz "\n"
+	
+	//Format afisare minus
+	format_printf_minus: .asciz "-"
+	
+	//Folosim pentru a masca bitii identificatorului
+	masca_identificator :.long 1536 
+
+	//Folosim pentru a masca bitii codificarii
+	masca_codificare:.long 511
+	
+	//Folosim pentru a masca bitul de semn al unui operand
+	masca_bit_semn:.long 256
+	
+	//Folosim pentru a masca un operand
+	masca_operand: .long 255
+
+	//Identificator pentru numar intreg
+	numar_intreg:.long 0 
+
+	//Identificator pentru variabila 
+	variabila:.long 512 
+
+	//Identificator pentru operatie 
+	operatie:.long 1024 
+
+	
+	//Valoarea identificatorilor pentru fiecare operatii
+	op_let:.long 0
+
+	op_add:.long 1 
+
+	op_sub:.long 2 
+
+	op_mul:.long 3 
+
+	op_div:.long 4 
+
+	//String-uri pentru fiecare operatie
+	str_let:.asciz "let"
+
+	str_add:.asciz "add"
+
+	str_sub:.asciz "sub"
+
+	str_mul:.asciz "mul"
+
+	str_div:.asciz "div"
+
+.text
+	.global main
+
+	main:
+		et_citire_sir:
+			//Citire folosind scanf
+			push $sir
+			push $format_scanf
+			call scanf
+			pop %ebx
+			pop %ebx
+
+		lea sir,%ebx
+		et_parsare_inceput:
+			//Verific daca am ajuns la sfarsit
+			cmp $0,(%ebx)
+			je et_parsare_final
+			
+			//Copiem 3 caractere in variabila "instructiune"
+			push $3
+			push %ebx
+			push $instructiune
+			call strncpy
+			pop %eax
+			pop %eax
+			pop %eax
+
+			//Transformam instructiunea intr-un numar, si il stocam in ecx
+			push $16
+			push $0
+			push $instructiune
+			call strtol
+			mov %eax,%ecx
+			pop %eax
+			pop %eax
+			pop %eax
+
+			et_procesare:
+				mov %ecx,%edx
+				and masca_identificator,%edx
+				
+				cmp numar_intreg,%edx
+				je et_procesare_numar_intreg
+
+				cmp variabila,%edx
+				je et_procesare_variabila
+
+				cmp operatie,%edx
+				je et_procesare_operatie
+
+				et_procesare_numar_intreg:
+					mov %ecx,%edx
+					and masca_bit_semn,%edx
+
+					cmp $0,%edx
+					je et_afisare_numar
+					
+					push %ecx
+					push $format_printf_minus
+					call printf
+					pop %eax
+					pop %ecx
+
+					et_afisare_numar:
+						mov %ecx,%edx		
+						and masca_operand,%edx
+						
+						push %ecx
+						push %edx
+						push $format_printf_numar
+						call printf
+						pop %eax
+						pop %eax
+						pop %ecx
+
+					jmp et_procesare_final
+
+				et_procesare_variabila:
+						mov %ecx,%edx		
+						and masca_operand,%edx
+
+						push %ecx
+						push %edx
+						push $format_printf_caracter
+						call printf
+						pop %eax
+						pop %eax
+						pop %ecx
+
+					jmp et_procesare_final
+
+				et_procesare_operatie:
+					mov %ecx,%edx			
+					and masca_codificare,%edx
+					
+					cmp op_let,%edx
+					je et_afiseaza_let
+
+					cmp op_add,%edx
+					je et_afiseaza_add
+
+					cmp op_sub,%edx
+					je et_afiseaza_sub
+
+					cmp op_mul,%edx
+					je et_afiseaza_mul
+
+					cmp op_div,%edx
+					je et_afiseaza_div
+					
+
+					et_afiseaza_let:
+						push $str_let
+						jmp et_afiseaza_operatie
+
+					et_afiseaza_add:
+						push $str_add
+						jmp et_afiseaza_operatie
+
+					et_afiseaza_sub:
+						push $str_sub
+						jmp et_afiseaza_operatie
+
+					et_afiseaza_mul:
+						push $str_mul
+						jmp et_afiseaza_operatie
+
+					et_afiseaza_div:
+						push $str_div
+						jmp et_afiseaza_operatie
+
+					et_afiseaza_operatie:
+						push $format_printf_string
+						call printf		
+						pop %eax
+						pop %eax
+
+					jmp et_procesare_final
+
+			et_procesare_final:
+
+			//Incrementam cu 3 pointer-ul 
+			add $3,%ebx
+
+			jmp et_parsare_inceput
+		
+		et_parsare_final:
+	
+		push $format_prinf_flush
+		call printf
+		pop %eax
+
+
+		et_iesire:
+			mov $1,%eax 
+			xor %ebx,%ebx
+			int $0x80
+			
+	
